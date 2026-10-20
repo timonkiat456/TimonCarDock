@@ -15,7 +15,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -76,7 +75,7 @@ class MainActivity : AppCompatActivity() {
                     if (webFrameWebView.canGoBack()) {
                         webFrameWebView.goBack()
                     } else {
-                        hideWebFrame()
+                        showDashboard()
                     }
                 } else if (mainWebView.canGoBack()) {
                     mainWebView.goBack()
@@ -99,25 +98,26 @@ class MainActivity : AppCompatActivity() {
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
         settings.setGeolocationEnabled(true)
-        
-        // Critical for uninterrupted background audio
         settings.mediaPlaybackRequiresUserGesture = false
-        
-        // Desktop User-Agent prevents YouTube from forcing mobile constraints
         settings.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     }
 
-    // Public method callable or triggered when user opens external sites
-    fun loadExternalUrl(url: String) {
+    // Toggle to YouTube Music layer without reloading/destroying session
+    fun showWebFrame(url: String) {
         runOnUiThread {
-            webFrameWebView.loadUrl(url)
+            if (webFrameWebView.url != url) {
+                webFrameWebView.loadUrl(url)
+            }
             webFrameWebView.visibility = View.VISIBLE
+            mainWebView.visibility = View.GONE
         }
     }
 
-    fun hideWebFrame() {
+    // Toggle back to dashboard layer while leaving YouTube running in background
+    fun showDashboard() {
         runOnUiThread {
             webFrameWebView.visibility = View.GONE
+            mainWebView.visibility = View.VISIBLE
         }
     }
 
