@@ -30,6 +30,7 @@
       height: 120%;
       background-size: cover;
       background-position: center;
+      background-image: linear-gradient(135deg, #1a1a1a, #0a0a0a);
       filter: blur(50px) brightness(0.35);
       z-index: 1;
       transition: background-image 0.8s ease-in-out;
@@ -37,12 +38,8 @@
     }
 
     @keyframes ambientPan {
-      0% {
-        transform: scale(1) translate(0, 0);
-      }
-      100% {
-        transform: scale(1.12) translate(-2%, -2%);
-      }
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.12) translate(-2%, -2%); }
     }
 
     .player-container {
@@ -70,11 +67,6 @@
       font-weight: 500;
       cursor: pointer;
       backdrop-filter: blur(12px);
-      transition: background 0.2s ease;
-    }
-
-    .back-btn:active {
-      background: rgba(255, 255, 255, 0.25);
     }
 
     .media-info {
@@ -91,7 +83,7 @@
       height: 68px;
       border-radius: 12px;
       object-fit: cover;
-      background-color: #1a1a1a;
+      background-color: #222;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
       flex-shrink: 0;
     }
@@ -125,7 +117,7 @@
       flex: 1;
       overflow-y: auto;
       text-align: center;
-      padding: 40vh 15px; /* Top/Bottom padding ensures active line centers perfectly */
+      padding: 40vh 15px;
       scroll-behavior: smooth;
       mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
@@ -135,7 +127,6 @@
       display: none;
     }
 
-    /* Lyric Line Styling */
     .lyric-line {
       font-size: 1.15rem;
       font-weight: 400;
@@ -146,11 +137,10 @@
       line-height: 1.4;
     }
 
-    /* Active Highlighted Lyric */
     .lyric-line.active {
       color: #ffffff;
       font-size: 1.45rem;
-      font-weight: 800; /* Bold active line */
+      font-weight: 800;
       transform: scale(1.05);
       text-shadow: 0 0 16px rgba(255, 255, 255, 0.6);
     }
@@ -188,7 +178,6 @@
     let parsedLyrics = [];
     let currentActiveIndex = -1;
 
-    // Parse standard LRC format into array: [{ time: seconds, text: string }]
     function parseLrc(lrcString) {
       if (!lrcString) return [];
       const lines = lrcString.split('\n');
@@ -211,14 +200,17 @@
       return result;
     }
 
-    // Called by Kotlin bridge with new media metadata & synced LRC
     window.loadSongData = function(song) {
       trackTitle.innerText = song.title || 'Unknown Title';
       trackArtist.innerText = song.artist || 'Unknown Artist';
 
-      if (song.coverUrl) {
+      if (song.coverUrl && song.coverUrl.trim() !== "") {
         albumArt.src = song.coverUrl;
         bgBlur.style.backgroundImage = `url('${song.coverUrl}')`;
+        albumArt.style.display = 'block';
+      } else {
+        albumArt.src = '';
+        bgBlur.style.backgroundImage = 'linear-gradient(135deg, #1a1a1a, #0a0a0a)';
       }
 
       parsedLyrics = parseLrc(song.lrcLyrics);
@@ -239,7 +231,6 @@
       lyricsContainer.innerHTML = html;
     }
 
-    // Continuously invoked by Kotlin ticker with current playback seconds
     window.updatePlaybackTime = function(currentTimeSeconds) {
       if (parsedLyrics.length === 0) return;
 
@@ -252,7 +243,6 @@
         }
       }
 
-      // Only re-render/scroll if line position changed
       if (activeIndex !== currentActiveIndex) {
         currentActiveIndex = activeIndex;
 
