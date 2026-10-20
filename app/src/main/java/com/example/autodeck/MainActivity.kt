@@ -79,21 +79,22 @@ class MainActivity : AppCompatActivity() {
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
 
         try {
-            // Register listener for active media sessions (YouTube Music, Spotify, etc.)
-            val componentName = ComponentName(this, NotificationListenerService::class.java)
-            val controllers = mediaSessionManager.getActiveSessions(componentName)
+            // Check active media controllers (e.g. YT Music, Spotify)
+            val controllers = mediaSessionManager.getActiveSessions(null)
 
             if (controllers.isNotEmpty()) {
                 attachMediaController(controllers[0])
             }
 
-            mediaSessionManager.addOnActiveSessionsChangedListener({ activeControllers ->
-                if (!activeControllers.isNullOrEmpty()) {
-                    attachMediaController(activeControllers[0])
-                }
-            }, componentName)
+            mediaSessionManager.addOnActiveSessionsChangedListener(
+                { activeControllers ->
+                    if (!activeControllers.isNullOrEmpty()) {
+                        attachMediaController(activeControllers[0])
+                    }
+                },
+                null
+            )
         } catch (e: SecurityException) {
-            // Handle cases where Notification Access permission hasn't been granted yet
             e.printStackTrace()
         }
     }
@@ -129,7 +130,6 @@ class MainActivity : AppCompatActivity() {
         val artworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: ""
 
-        // Here you can fetch dynamic LRC lyrics from your local storage, API, or asset mapping
         val lrcLyrics = fetchLrcLyricsForTrack(title, artist)
 
         // Construct dynamic JSON Payload safely using JSONObject
@@ -140,16 +140,13 @@ class MainActivity : AppCompatActivity() {
             put("lrcLyrics", lrcLyrics)
         }
 
-        // Inject payload dynamically into WebView JS interface without page reload
         runOnUiThread {
             webView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
         }
     }
 
     private fun fetchLrcLyricsForTrack(title: String, artist: String): String {
-        // Return dynamic LRC string mapped to the track title/artist
-        // Example dynamic fallback if no LRC file matches:
-        return "[00:00.00] $title -$artist\n[00:02.00] Syncing live track data..."
+        return "[00:00.00] $title - $artist\n[00:02.00] Syncing live track data..."
     }
 
     /* -------------------------------------------------------------------------- */
@@ -176,3 +173,13 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                webView.reload()
+            }
+        }
+    }
+}
