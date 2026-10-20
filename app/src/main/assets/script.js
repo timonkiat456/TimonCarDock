@@ -1,7 +1,5 @@
 var urlInput = document.getElementById('urlInput');
 var shortcutsBar = document.getElementById('shortcutsBar');
-var dashboardLayer = document.getElementById('dashboardLayer');
-var webFrame = document.getElementById('webFrame');
 
 document.getElementById('brandBtn').onclick = goHome;
 document.getElementById('goBtn').onclick = loadUserUrl;
@@ -10,28 +8,10 @@ document.getElementById('ytBtn').onclick = function() { openBookmarkUrl('https:/
 document.getElementById('ytMusicBtn').onclick = function() { openBookmarkUrl('https://music.youtube.com'); };
 document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('player.html'); };
 
-document.getElementById('backBtn').onclick = function() {
-    if (webFrame.style.display === "block" && webFrame.contentWindow.history.length > 1) {
-        webFrame.contentWindow.history.back();
-    } else {
-        goHome();
-    }
-};
-
-document.getElementById('forwardBtn').onclick = function() {
-    if (webFrame.style.display === "block") {
-        webFrame.contentWindow.history.forward();
-    }
-};
-
+document.getElementById('backBtn').onclick = function() { history.back(); };
+document.getElementById('forwardBtn').onclick = function() { history.forward(); };
 document.getElementById('homeBtn').onclick = goHome;
-document.getElementById('refreshBtn').onclick = function() {
-    if (webFrame.style.display === "block") {
-        webFrame.contentWindow.location.reload();
-    } else {
-        location.reload();
-    }
-};
+document.getElementById('refreshBtn').onclick = function() { location.reload(); };
 
 urlInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -56,7 +36,7 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Dynamic Weather
+// Weather Logic
 function fetchWeather() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
@@ -112,7 +92,7 @@ function getWeatherDescription(code) {
 }
 fetchWeather();
 
-// Bookmark Management
+// Bookmarks
 function getBookmarks() {
     var stored = localStorage.getItem('autodeck_bookmarks');
     if (stored) {
@@ -156,7 +136,7 @@ function renderBookmarks() {
 function formatUrl(rawVal) {
     var url = rawVal.trim();
     if (!url) return '';
-    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.endsWith('.html')) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
         url = 'https://' + url;
     }
     return url;
@@ -193,20 +173,12 @@ function deleteBookmark(index) {
     renderBookmarks();
 }
 
-// Seamless Overlay Switching (Does NOT unload audio playback)
 function openBookmarkUrl(url) {
-    if (url === "player.html") {
-        window.location.href = "player.html";
-        return;
-    }
-    webFrame.src = url;
-    webFrame.style.display = "block";
-    dashboardLayer.style.display = "none";
+    window.location.href = url;
 }
 
 function goHome() {
-    webFrame.style.display = "none";
-    dashboardLayer.style.display = "flex";
+    window.location.href = "timonauto.html";
 }
 
 renderBookmarks();
