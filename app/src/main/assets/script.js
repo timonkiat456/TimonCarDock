@@ -1,17 +1,37 @@
 var urlInput = document.getElementById('urlInput');
 var shortcutsBar = document.getElementById('shortcutsBar');
+var dashboardLayer = document.getElementById('dashboardLayer');
+var webFrame = document.getElementById('webFrame');
 
 document.getElementById('brandBtn').onclick = goHome;
 document.getElementById('goBtn').onclick = loadUserUrl;
 document.getElementById('addBtn').onclick = addBookmark;
 document.getElementById('ytBtn').onclick = function() { openBookmarkUrl('https://m.youtube.com'); };
 document.getElementById('ytMusicBtn').onclick = function() { openBookmarkUrl('https://music.youtube.com'); };
-document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('player.html'); }; // <-- Added Lyrics Page Link
+document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('player.html'); };
 
-document.getElementById('backBtn').onclick = function() { history.back(); };
-document.getElementById('forwardBtn').onclick = function() { history.forward(); };
+document.getElementById('backBtn').onclick = function() {
+    if (webFrame.style.display === "block" && webFrame.contentWindow.history.length > 1) {
+        webFrame.contentWindow.history.back();
+    } else {
+        goHome();
+    }
+};
+
+document.getElementById('forwardBtn').onclick = function() {
+    if (webFrame.style.display === "block") {
+        webFrame.contentWindow.history.forward();
+    }
+};
+
 document.getElementById('homeBtn').onclick = goHome;
-document.getElementById('refreshBtn').onclick = function() { location.reload(); };
+document.getElementById('refreshBtn').onclick = function() {
+    if (webFrame.style.display === "block") {
+        webFrame.contentWindow.location.reload();
+    } else {
+        location.reload();
+    }
+};
 
 urlInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
@@ -36,7 +56,7 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-// Dynamic Location & Weather (Fully Dynamic via IP/GPS)
+// Dynamic Weather
 function fetchWeather() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
@@ -92,7 +112,7 @@ function getWeatherDescription(code) {
 }
 fetchWeather();
 
-// Dynamic Bookmark Management
+// Bookmark Management
 function getBookmarks() {
     var stored = localStorage.getItem('autodeck_bookmarks');
     if (stored) {
@@ -136,7 +156,7 @@ function renderBookmarks() {
 function formatUrl(rawVal) {
     var url = rawVal.trim();
     if (!url) return '';
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (!url.startsWith('http://') && !url.startsWith('https://') && !url.endsWith('.html')) {
         url = 'https://' + url;
     }
     return url;
@@ -145,7 +165,7 @@ function formatUrl(rawVal) {
 function loadUserUrl() {
     var rawVal = urlInput.value;
     if (!rawVal) return;
-    window.location.href = formatUrl(rawVal);
+    openBookmarkUrl(formatUrl(rawVal));
 }
 
 function addBookmark() {
@@ -173,12 +193,20 @@ function deleteBookmark(index) {
     renderBookmarks();
 }
 
+// Seamless Overlay Switching (Does NOT unload audio playback)
 function openBookmarkUrl(url) {
-    window.location.href = url;
+    if (url === "player.html") {
+        window.location.href = "player.html";
+        return;
+    }
+    webFrame.src = url;
+    webFrame.style.display = "block";
+    dashboardLayer.style.display = "none";
 }
 
 function goHome() {
-    window.location.href = "timonauto.html";
+    webFrame.style.display = "none";
+    dashboardLayer.style.display = "flex";
 }
 
 renderBookmarks();
