@@ -173,11 +173,19 @@ class MainActivity : AppCompatActivity() {
         lastArtworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: ""
 
-        // Fetch actual LRC lyrics asynchronously from LRCLIB.net
+        // Fetch actual LRC lyrics asynchronously from LRCLIB.net with cleaning applied
         fetchLyricsFromApi(title, artist)
     }
 
-    private fun fetchLyricsFromApi(title: String, artist: String) {
+    private fun cleanMetadataString(raw: String): String {
+        return raw.replace(Regex("(?i)\\(official video\\)|\\[official video\\]|\\(official audio\\)|\\(lyric video\\)|\\(audio\\)|\\(remix\\)"), "")
+            .trim()
+    }
+
+    private fun fetchLyricsFromApi(rawTitle: String, rawArtist: String) {
+        val title = cleanMetadataString(rawTitle)
+        val artist = cleanMetadataString(rawArtist)
+
         GlobalScope.launch(Dispatchers.IO) {
             try {
                 val encodedTitle = URLEncoder.encode(title, "UTF-8")
@@ -196,12 +204,12 @@ class MainActivity : AppCompatActivity() {
                     json.optString("syncedLyrics", "").takeIf { it.isNotEmpty() && it != "null" }
                         ?: json.optString("plainLyrics", "[00:00.00] No synchronized lyrics found.")
                 } else {
-                    "[00:00.00] Lyrics not found for $title"
+                    "[00:00.00] Lyrics not found for $rawTitle"
                 }
 
                 val payload = JSONObject().apply {
-                    put("title", title)
-                    put("artist", artist)
+                    put("title", rawTitle)
+                    put("artist", rawArtist)
                     put("coverUrl", lastArtworkUri)
                     put("lrcLyrics", lyricsText)
                 }
