@@ -9,6 +9,8 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.webkit.GeolocationPermissions
@@ -38,6 +40,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaSessionManager: MediaSessionManager
     private var activeController: MediaController? = null
     private var lastArtworkUri: String = ""
+
+    // Handler to tick playback position every 500ms for lyrics scrolling & highlighting
+    private val handler = Handler(Looper.getMainLooper())
+    private val positionUpdater = object : Runnable {
+        override fun run() {
+            activeController?.playbackState?.let { state ->
+                if (state.state == PlaybackState.STATE_PLAYING) {
+                    val currentPositionSec = state.position / 1000.0
+                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                        mainWebView.evaluateJavascript("if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }", null)
+                    }
+                }
+            }
+            handler.postDelayed(this, 500)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -177,12 +195,13 @@ class MainActivity : AppCompatActivity() {
 
         val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
         val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
+        
+        // Scan all possible art keys provided by external apps
         lastArtworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
-            ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: ""
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) ?: ""
 
-        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist")
-
-        // Asynchronously fetch synced LRC lyrics from LRCLIB API
+        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist | Art: $lastArtworkUri")
         fetchLyricsFromApi(title, artist)
     }
 
@@ -253,11 +272,28 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         setupMediaSessionListener()
+        handler.post(positionUpdater)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(positionUpdater)
     }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                mainWebView.reload()
+            }
+        }
+    }
+}
+s: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
