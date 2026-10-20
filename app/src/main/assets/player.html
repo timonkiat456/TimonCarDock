@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoDeck Player</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #000;
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bg-blur {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      filter: blur(40px) brightness(0.3);
+      transform: scale(1.1);
+      z-index: 1;
+      transition: background-image 0.5s ease;
+    }
+
+    .player-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 15px 20px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .back-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    .media-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+    }
+
+    .album-art {
+      width: 65px;
+      height: 65px;
+      border-radius: 12px;
+      object-fit: cover;
+      background-color: #222;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+    }
+
+    .track-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .track-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .track-artist {
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-top: 2px;
+    }
+
+    .controls-section {
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .progress-bar::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 25px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+    }
+
+    .btn-play {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #fff;
+      color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1rem;
+    }
+
+    .lyrics-container {
+      flex: 1;
+      overflow-y: auto;
+      text-align: center;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+      padding: 30px 10px;
+    }
+
+    .lyrics-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lyric-line {
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin: 16px 0;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .lyric-line.active {
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: bold;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-blur" id="bg-blur"></div>
+
+  <div class="player-container">
+    <div class="top-bar">
+      <button class="back-btn" onclick="window.location.href='timonauto.html'">← Dashboard</button>
+    </div>
+
+    <div class="media-info">
+      <img id="album-art" class="album-art" alt="Cover" src="">
+      <div class="track-details">
+        <div class="track-title" id="track-title">--</div>
+        <div class="track-artist" id="track-artist">--</div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <div class="progress-bar-container">
+        <span id="current-time">0:00</span>
+        <input type="range" id="progress" class="progress-bar" value="0" max="100">
+        <span id="duration">0:00</span>
+      </div>
+      <div class="buttons">
+        <button class="btn" id="prev-btn">⏮</button>
+        <button class="btn btn-play" id="play-btn">▶</button>
+        <button class="btn" id="next-btn">⏭</button>
+      </div>
+    </div>
+
+    <div class="lyrics-container" id="lyrics-window"></div>
+  </div>
+
+  <audio id="audio-player" src=""></audio>
+
+  <script>
+    const audio = document.getElementById('audio-player');
+    const playBtn = document.getElementById('play-btn');
+    const progress = document.getElementById('progress');
+    const currentTimeEl = document.getElementById('current-time');
+    const durationEl = document.getElementById('duration');
+    const lyricsWindow = document.getElementById('lyrics-window');
+    const bgBlur = document.getElementById('bg-blur');
+    const albumArt = document.getElementById('album-art');
+    const trackTitle = document.getElementById('track-title');
+    const trackArtist = document.getElementById('track-artist');
+
+    let parsedLyrics = [];
+    let currentActiveIndex = -1;
+
+    function parseLRC(lrcText) {
+      if (!lrcText) return [];
+      const lines = lrcText.trim().split('\n');
+      const result = [];
+      const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+
+      lines.forEach(line => {
+        const match = timeRegex.exec(line);
+        if (match) {
+          const minutes = parseInt(match[1]);
+          const seconds = parseInt(match[2]);
+          const milliseconds = parseInt(match[3]);
+          const time = minutes * 60 + seconds + (milliseconds > 99 ? milliseconds / 1000 : milliseconds / 100);
+          const text = line.replace(timeRegex, '').trim();
+          if (text) result.push({ time, text });
+        }
+      });
+      return result;
+    }
+
+    function loadSongData(song) {
+      trackTitle.innerText = song.title || 'Unknown Title';
+      trackArtist.innerText = song.artist || 'Unknown Artist';
+      albumArt.src = song.coverUrl || '';
+      bgBlur.style.backgroundImage = song.coverUrl ? `url('${song.coverUrl}')` : 'none';
+      
+      if (song.audioUrl) {
+        audio.src = song.audioUrl;
+      }
+
+      parsedLyrics = parseLRC(song.lrcLyrics || '');
+      lyricsWindow.innerHTML = '';
+      currentActiveIndex = -1;
+
+      if (parsedLyrics.length > 0) {
+        parsedLyrics.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'lyric-line';
+          div.id = `line-${index}`;
+          div.innerText = item.text;
+          lyricsWindow.appendChild(div);
+        });
+      } else {
+        lyricsWindow.innerHTML = '<div class="lyric-line active">No Lyrics Available</div>';
+      }
+    }
+
+    audio.ontimeupdate = () => {
+      const currentTime = audio.currentTime;
+
+      if (audio.duration) {
+        progress.value = (currentTime / audio.duration) * 100;
+        currentTimeEl.innerText = formatTime(currentTime);
+        durationEl.innerText = formatTime(audio.duration);
+      }
+
+      for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+        if (currentTime >= parsedLyrics[i].time) {
+          if (currentActiveIndex !== i) {
+            if (currentActiveIndex !== -1) {
+              const prev = document.getElementById(`line-${currentActiveIndex}`);
+              if (prev) prev.classList.remove('active');
+            }
+            currentActiveIndex = i;
+            const currentLine = document.getElementById(`line-${currentActiveIndex}`);
+            if (currentLine) {
+              currentLine.classList.add('active');
+              currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    playBtn.onclick = () => {
+      if (!audio.src) return;
+      if (audio.paused) {
+        audio.play();
+        playBtn.innerText = '⏸';
+      } else {
+        audio.pause();
+        playBtn.innerText = '▶';
+      }
+    };
+
+    progress.oninput = () => {
+      if (audio.duration) {
+        audio.currentTime = (progress.value / 100) * audio.duration;
+      }
+    };
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+  </script>
+</body>
+</html>
