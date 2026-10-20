@@ -170,4 +170,151 @@
       margin: 16px 0;
       transition: all 0.3s ease;
       font-weight: 500;
-      white-space: pre-
+      white-space: pre-line;
+    }
+
+    .lyric-line.active {
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: bold;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-blur" id="bg-blur"></div>
+
+  <div class="player-container">
+    <div class="top-bar">
+      <button class="back-btn" onclick="window.location.href='timonauto.html'">← Dashboard</button>
+    </div>
+
+    <div class="media-info">
+      <img id="album-art" class="album-art" alt="Cover" src="">
+      <div class="track-details">
+        <div class="track-title" id="track-title">Waiting for track...</div>
+        <div class="track-artist" id="track-artist">--</div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <div class="progress-bar-container">
+        <span id="current-time">0:00</span>
+        <input type="range" id="progress" class="progress-bar" value="0" max="100">
+        <span id="duration">0:00</span>
+      </div>
+      <div class="buttons">
+        <button class="btn" id="prev-btn">⏮</button>
+        <button class="btn btn-play" id="play-btn">▶</button>
+        <button class="btn" id="next-btn">⏭</button>
+      </div>
+    </div>
+
+    <div class="lyrics-container" id="lyrics-window">
+      <div class="lyric-line active">Play music in YouTube Music to view synced lyrics</div>
+    </div>
+  </div>
+
+  <script>
+    const playBtn = document.getElementById('play-btn');
+    const progress = document.getElementById('progress');
+    const currentTimeEl = document.getElementById('current-time');
+    const durationEl = document.getElementById('duration');
+    const lyricsWindow = document.getElementById('lyrics-window');
+    const bgBlur = document.getElementById('bg-blur');
+    const albumArt = document.getElementById('album-art');
+    const trackTitle = document.getElementById('track-title');
+    const trackArtist = document.getElementById('track-artist');
+
+    let parsedLyrics = [];
+    let currentActiveIndex = -1;
+
+    function parseLRC(lrcText) {
+      if (!lrcText) return [];
+      const lines = lrcText.trim().split('\n');
+      const result = [];
+      const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+
+      lines.forEach(line => {
+        const match = timeRegex.exec(line);
+        if (match) {
+          const minutes = parseInt(match[1]);
+          const seconds = parseInt(match[2]);
+          const milliseconds = parseInt(match[3]);
+          const time = minutes * 60 + seconds + (milliseconds > 99 ? milliseconds / 1000 : milliseconds / 100);
+          const text = line.replace(timeRegex, '').trim();
+          if (text) result.push({ time, text });
+        }
+      });
+      return result;
+    }
+
+    // Bridge function invoked by Kotlin via evaluateJavascript
+    window.loadSongData = function(song) {
+      if (!song) return;
+
+      trackTitle.innerText = song.title || 'Unknown Title';
+      trackArtist.innerText = song.artist || 'Unknown Artist';
+      
+      if (song.coverUrl) {
+        albumArt.src = song.coverUrl;
+        bgBlur.style.backgroundImage = `url('${song.coverUrl}')`;
+      }
+
+      parsedLyrics = parseLRC(song.lrcLyrics || '');
+      lyricsWindow.innerHTML = '';
+      currentActiveIndex = -1;
+
+      if (parsedLyrics.length > 0) {
+        parsedLyrics.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'lyric-line';
+          div.id = `line-${index}`;
+          div.innerText = item.text;
+          lyricsWindow.appendChild(div);
+        });
+      } else {
+        const text = (song.lrcLyrics && song.lrcLyrics.trim()) ? song.lrcLyrics : 'No synchronized lyrics found for this track.';
+        lyricsWindow.innerHTML = `<div class="lyric-line active">${text}</div>`;
+      }
+    };
+
+    // Live Progress Synchronization from Kotlin MediaSession
+    window.updatePlaybackProgress = function(currentTime, duration, isPlaying) {
+      if (duration > 0) {
+        progress.value = (currentTime / duration) * 100;
+        currentTimeEl.innerText = formatTime(currentTime);
+        durationEl.innerText = formatTime(duration);
+      }
+      playBtn.innerText = isPlaying ? '⏸' : '▶';
+
+      if (parsedLyrics.length === 0) return;
+
+      for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+        if (currentTime >= parsedLyrics[i].time) {
+          if (currentActiveIndex !== i) {
+            if (currentActiveIndex !== -1) {
+              const prev = document.getElementById(`line-${currentActiveIndex}`);
+              if (prev) prev.classList.remove('active');
+            }
+            currentActiveIndex = i;
+            const currentLine = document.getElementById(`line-${currentActiveIndex}`);
+            if (currentLine) {
+              currentLine.classList.add('active');
+              currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+  </script>
+</body>
+</html>
