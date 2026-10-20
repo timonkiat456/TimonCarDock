@@ -173,12 +173,29 @@ function deleteBookmark(index) {
     renderBookmarks();
 }
 
+// Seamless Layer Switching (Keeps YouTube Music running in the background)
 function openBookmarkUrl(url) {
-    window.location.href = url;
+    if (url === "player.html") {
+        window.location.href = "player.html";
+        return;
+    }
+    
+    // Check if running inside Android app interface
+    if (window.AndroidBridge && typeof window.AndroidBridge.showWebFrame === 'function') {
+        window.AndroidBridge.showWebFrame(url);
+    } else {
+        // Fallback for browser testing
+        window.location.href = url;
+    }
 }
 
 function goHome() {
-    window.location.href = "timonauto.html";
+    if (window.AndroidBridge && typeof window.AndroidBridge.showDashboard === 'function') {
+        window.AndroidBridge.showDashboard();
+    } else {
+        window.location.href = "timonauto.html";
+    }
 }
+
 
 renderBookmarks();
