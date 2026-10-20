@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<car-app-service xmlns:android="http://schemas.android.com/apk/res/android">
+    <category android:name="androidx.car.app.category.NAVIGATION"/>
+</car-app-service>
