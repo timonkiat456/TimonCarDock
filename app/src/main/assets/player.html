@@ -168,7 +168,7 @@
     </div>
   </div>
 
-  <script>
+    <script>
     const albumArt = document.getElementById('album-art');
     const trackTitle = document.getElementById('track-title');
     const trackArtist = document.getElementById('track-artist');
@@ -177,6 +177,8 @@
 
     let parsedLyrics = [];
     let currentActiveIndex = -1;
+    let internalPlaybackTimer = null;
+    let simulatedSeconds = 0;
 
     function parseLrc(lrcString) {
       if (!lrcString) return [];
@@ -215,7 +217,15 @@
 
       parsedLyrics = parseLrc(song.lrcLyrics);
       currentActiveIndex = -1;
+      simulatedSeconds = 0;
       renderLyricsHtml();
+
+      // Start local fallback timer in case Android doesn't stream live positions
+      if (internalPlaybackTimer) clearInterval(internalPlaybackTimer);
+      internalPlaybackTimer = setInterval(() => {
+        simulatedSeconds += 0.5;
+        updatePlaybackTime(simulatedSeconds);
+      }, 500);
     };
 
     function renderLyricsHtml() {
@@ -234,9 +244,14 @@
     window.updatePlaybackTime = function(currentTimeSeconds) {
       if (parsedLyrics.length === 0) return;
 
+      // Sync local ticker if Kotlin passes a valid non-zero timestamp
+      if (currentTimeSeconds > 0 && Math.abs(currentTimeSeconds - simulatedSeconds) > 2) {
+        simulatedSeconds = currentTimeSeconds;
+      }
+
       let activeIndex = 0;
       for (let i = 0; i < parsedLyrics.length; i++) {
-        if (parsedLyrics[i].time <= currentTimeSeconds) {
+        if (parsedLyrics[i].time <= simulatedSeconds) {
           activeIndex = i;
         } else {
           break;
@@ -258,5 +273,6 @@
       }
     };
   </script>
+
 </body>
 </html>
