@@ -6,6 +6,7 @@ document.getElementById('goBtn').onclick = loadUserUrl;
 document.getElementById('addBtn').onclick = addBookmark;
 document.getElementById('ytBtn').onclick = function() { openBookmarkUrl('https://m.youtube.com'); };
 document.getElementById('ytMusicBtn').onclick = function() { openBookmarkUrl('https://music.youtube.com'); };
+document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('player.html'); }; // <-- Added Lyrics Page Link
 
 document.getElementById('backBtn').onclick = function() { history.back(); };
 document.getElementById('forwardBtn').onclick = function() { history.forward(); };
