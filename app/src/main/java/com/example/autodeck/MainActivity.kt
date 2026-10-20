@@ -43,18 +43,23 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val positionUpdater = object : Runnable {
-        override fun run() {
-            activeController?.playbackState?.let { state ->
-                if (state.state == PlaybackState.STATE_PLAYING) {
-                    val currentPositionSec = state.position / 1000.0
-                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                        mainWebView.evaluateJavascript("if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }", null)
-                    }
+    override fun run() {
+        activeController?.playbackState?.let { state ->
+            if (state.state == PlaybackState.STATE_PLAYING) {
+                val currentPositionSec = state.position / 1000.0
+                
+                // Add this log to check Logcat while playing music:
+                Log.d("AutoDeckDebug", "Current Playback Position: $currentPositionSec seconds")
+
+                if (currentPositionSec >= 0 && ::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                    mainWebView.evaluateJavascript("if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }", null)
                 }
             }
-            handler.postDelayed(this, 500)
         }
+        handler.postDelayed(this, 500)
     }
+}
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
