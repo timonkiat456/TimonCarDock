@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoDeck Player (Debug)</title>
+  <title>AutoDeck Player</title>
   <style>
     * {
       box-sizing: border-box;
@@ -65,7 +65,7 @@
       display: flex;
       align-items: center;
       gap: 15px;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
     }
 
     .album-art {
@@ -85,6 +85,10 @@
     .track-title {
       font-size: 1.2rem;
       font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
     }
 
     .track-artist {
@@ -97,19 +101,28 @@
       flex: 1;
       overflow-y: auto;
       text-align: center;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
+      padding: 20px 0;
+      scroll-behavior: smooth;
+      mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
     }
 
-    .status-box {
-      font-size: 1.2rem;
-      color: #00ffcc;
+    .lyrics-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lyric-line {
+      font-size: 1.1rem;
+      color: #777;
+      margin: 16px 0;
+      transition: all 0.3s ease;
+    }
+
+    .lyric-line.active {
+      color: #fff;
+      font-size: 1.3rem;
       font-weight: bold;
-      background: rgba(255, 255, 255, 0.1);
-      padding: 15px 25px;
-      border-radius: 12px;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
   </style>
 </head>
@@ -130,8 +143,8 @@
       </div>
     </div>
 
-    <div class="lyrics-container">
-      <div class="status-box" id="status-box">Listening for song metadata...</div>
+    <div class="lyrics-container" id="lyrics-container">
+      <div class="lyric-line active">Syncing lyrics...</div>
     </div>
   </div>
 
@@ -140,11 +153,36 @@
     const trackTitle = document.getElementById('track-title');
     const trackArtist = document.getElementById('track-artist');
     const bgBlur = document.getElementById('bg-blur');
-    const statusBox = document.getElementById('status-box');
+    const lyricsContainer = document.getElementById('lyrics-container');
+
+    let parsedLyrics = [];
+
+    // Parse standard .lrc format string into an array of objects: [{time: seconds, text: string}]
+    function parseLrc(lrcString) {
+      if (!lrcString) return [];
+      const lines = lrcString.split('\n');
+      const result = [];
+      const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+
+      for (let line of lines) {
+        const match = timeRegex.exec(line);
+        if (match) {
+          const minutes = parseInt(match[1], 10);
+          const seconds = parseInt(match[2], 10);
+          const milliseconds = parseInt(match[3], 10) * (match[3].length === 2 ? 10 : 1);
+          const totalSeconds = minutes * 60 + seconds + milliseconds / 1000;
+          const text = line.replace(timeRegex, '').trim();
+          if (text) {
+            result.push({ time: totalSeconds, text: text });
+          }
+        }
+      }
+      return result;
+    }
 
     // Global listener called by Kotlin's evaluateJavascript
     window.loadSongData = function(song) {
-      console.log("Data received from Kotlin:", song);
+      console.log("Song received:", song);
 
       trackTitle.innerText = song.title || 'Unknown Title';
       trackArtist.innerText = song.artist || 'Unknown Artist';
@@ -154,8 +192,47 @@
         bgBlur.style.backgroundImage = `url('${song.coverUrl}')`;
       }
 
-      statusBox.innerText = `Connected! Playing: "${song.title}" by ${song.artist}`;
-      statusBox.style.color = "#00ffcc";
+      // Parse lyrics and render to DOM
+      parsedLyrics = parseLrc(song.lrcLyrics);
+      renderLyricsHtml();
+    };
+
+    function renderLyricsHtml() {
+      if (parsedLyrics.length === 0) {
+        lyricsContainer.innerHTML = `<div class="lyric-line active">No synchronized lyrics available</div>`;
+        return;
+      }
+
+      let html = '';
+      parsedLyrics.forEach((item, index) => {
+        html += `<div class="lyric-line" id="lyric-${index}">${item.text}</div>`;
+      });
+      lyricsContainer.innerHTML = html;
+    }
+
+    // Optional: If you want to simulate lyrics progression or tie it back 
+    // to a playback timestamp passed from Kotlin later on.
+    window.updatePlaybackTime = function(currentTimeSeconds) {
+      if (parsedLyrics.length === 0) return;
+
+      let activeIndex = 0;
+      for (let i = 0; i < parsedLyrics.length; i++) {
+        if (parsedLyrics[i].time <= currentTimeSeconds) {
+          activeIndex = i;
+        } else {
+          break;
+        }
+      }
+
+      // Highlight active line and scroll it into view
+      document.querySelectorAll('.lyric-line').forEach((el, idx) => {
+        if (idx === activeIndex) {
+          el.classList.add('active');
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          el.classList.remove('active');
+        }
+      });
     };
   </script>
 </body>
