@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#0F0F0F">
 
+    <!-- Primary Local Dashboard & Lyrics Player -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <!-- Dedicated Background/Foreground Web Player (YT Music / YouTube) -->
+    <WebView
+        android:id="@+id/webFrameWebView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
 
 </FrameLayout>
