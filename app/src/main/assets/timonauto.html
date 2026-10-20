@@ -131,19 +131,9 @@
             padding: 2px;
         }
 
-        /* Content Area Container */
         .viewport-container {
             flex: 1;
             position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* View Layer 1: Home Dashboard */
-        .dashboard-container {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
             display: flex;
@@ -155,19 +145,6 @@
             gap: 20px;
             overflow-y: auto;
             background-color: #0f0f0f;
-            z-index: 2;
-        }
-
-        /* View Layer 2: Web View / YT Music Frame */
-        .web-frame {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            z-index: 1;
-            display: none;
         }
 
         .time-widget {
@@ -278,30 +255,24 @@
     </div>
 
     <div class="viewport-container">
-        <!-- Dashboard Layer -->
-        <div class="dashboard-container" id="dashboardLayer">
-            <div class="time-widget">
-                <div id="timeDisplay" class="time-display">00:00</div>
-                <div id="dateDisplay" class="date-display">Loading date...</div>
-            </div>
+        <div class="time-widget">
+            <div id="timeDisplay" class="time-display">00:00</div>
+            <div id="dateDisplay" class="date-display">Loading date...</div>
+        </div>
 
-            <div class="weather-widget" id="weatherWidget">
-                <div class="weather-temp" id="weatherTemp">--°C</div>
-                <div class="weather-details">
-                    <div class="weather-condition" id="weatherCondition">Loading weather...</div>
-                    <div class="weather-location" id="weatherLocation">Detecting location...</div>
-                </div>
-            </div>
-
-            <div class="quick-launch-grid">
-                <button class="quick-btn" id="ytBtn">▶ YouTube</button>
-                <button class="quick-btn" id="ytMusicBtn">🎵 YT Music</button>
-                <button class="quick-btn" id="lyricsBtn">📜 Lyrics Player</button>
+        <div class="weather-widget" id="weatherWidget">
+            <div class="weather-temp" id="weatherTemp">--°C</div>
+            <div class="weather-details">
+                <div class="weather-condition" id="weatherCondition">Loading weather...</div>
+                <div class="weather-location" id="weatherLocation">Detecting location...</div>
             </div>
         </div>
 
-        <!-- Web Content Layer (Holds YT Music without destroying session) -->
-        <iframe id="webFrame" class="web-frame"></iframe>
+        <div class="quick-launch-grid">
+            <button class="quick-btn" id="ytBtn">▶ YouTube</button>
+            <button class="quick-btn" id="ytMusicBtn">🎵 YT Music</button>
+            <button class="quick-btn" id="lyricsBtn">📜 Lyrics Player</button>
+        </div>
     </div>
 
     <div class="bottom-nav">
