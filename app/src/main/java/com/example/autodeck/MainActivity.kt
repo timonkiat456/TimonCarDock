@@ -21,7 +21,13 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
 
@@ -174,18 +180,55 @@ class MainActivity : AppCompatActivity() {
         lastArtworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: ""
 
-        Log.d("AutoDeckDebug", "Pushing to WebView -> Title: $title | Artist: $artist")
+        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist")
 
-        val payload = JSONObject().apply {
-            put("title", title)
-            put("artist", artist)
-            put("coverUrl", lastArtworkUri)
-            put("lrcLyrics", "[00:00.00] Debug Mode: Title & Artist received successfully!")
-        }
+        // Asynchronously fetch synced LRC lyrics from LRCLIB API
+        fetchLyricsFromApi(title, artist)
+    }
 
-        runOnUiThread {
-            if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+    private fun cleanMetadataString(raw: String): String {
+        return raw.replace(Regex("(?i)\\(official video\\)|\\[official video\\]|\\(official audio\\)|\\(lyric video\\)|\\(audio\\)|\\(remix\\)"), "")
+            .trim()
+    }
+
+    private fun fetchLyricsFromApi(rawTitle: String, rawArtist: String) {
+        val title = cleanMetadataString(rawTitle)
+        val artist = cleanMetadataString(rawArtist)
+
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val encodedTitle = URLEncoder.encode(title, "UTF-8")
+                val encodedArtist = URLEncoder.encode(artist, "UTF-8")
+                val urlString = "https://lrclib.net/api/get?track_name=$encodedTitle&artist_name=$encodedArtist"
+
+                val url = URL(urlString)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("User-Agent", "AutoDeckApp (Personal Project)")
+
+                val lyricsText = if (connection.responseCode == 200) {
+                    val responseStr = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(responseStr)
+                    json.optString("syncedLyrics", "").takeIf { it.isNotEmpty() && it != "null" }
+                        ?: json.optString("plainLyrics", "[00:00.00] No synchronized lyrics found.")
+                } else {
+                    "[00:00.00] Lyrics not found for $rawTitle"
+                }
+
+                val payload = JSONObject().apply {
+                    put("title", rawTitle)
+                    put("artist", rawArtist)
+                    put("coverUrl", lastArtworkUri)
+                    put("lrcLyrics", lyricsText)
+                }
+
+                runOnUiThread {
+                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                        mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("AutoDeckDebug", "Error fetching lyrics", e)
             }
         }
     }
