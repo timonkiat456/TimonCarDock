@@ -8,11 +8,14 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Bundle
+import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -21,7 +24,8 @@ import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var webView: WebView
+    private lateinit var mainWebView: WebView
+    private lateinit var webFrameWebView: WebView
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
     private lateinit var mediaSessionManager: MediaSessionManager
@@ -31,21 +35,30 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        webView = findViewById(R.id.webView)
-        val settings: WebSettings = webView.settings
+        mainWebView = findViewById(R.id.webView)
+        webFrameWebView = findViewById(R.id.webFrameWebView)
 
-        // JavaScript & DOM Storage Setup
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.allowFileAccess = true
+        configureWebViewSettings(mainWebView)
+        configureWebViewSettings(webFrameWebView)
 
-        // 1. ENABLE BACKGROUND MEDIA PLAYBACK (No user gesture required)
-        settings.mediaPlaybackRequiresUserGesture = false
+        // Main Dashboard Client
+        mainWebView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                if (url?.contains("player.html") == true) {
+                    syncCurrentMediaToWebView()
+                }
+            }
+        }
 
-        // Geolocation Settings
-        settings.setGeolocationEnabled(true)
+        // External Web Browsing Client (YouTube Music, etc.)
+        webFrameWebView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                return false
+            }
+        }
 
-        webView.webChromeClient = object : WebChromeClient() {
+        val geoChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
@@ -53,36 +66,59 @@ class MainActivity : AppCompatActivity() {
                 callback?.invoke(origin, true, false)
             }
         }
+        mainWebView.webChromeClient = geoChromeClient
+        webFrameWebView.webChromeClient = geoChromeClient
 
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                // Inject current metadata only if the player page is active
-                if (url?.contains("player.html") == true) {
-                    syncCurrentMediaToWebView()
-                }
-            }
-        }
-
-        // 2. FIX CRASH: Intercept system back button safely
+        // Hardware Back Button Handler
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
+                if (webFrameWebView.visibility == View.VISIBLE) {
+                    if (webFrameWebView.canGoBack()) {
+                        webFrameWebView.goBack()
+                    } else {
+                        hideWebFrame()
+                    }
+                } else if (mainWebView.canGoBack()) {
+                    mainWebView.goBack()
                 } else {
-                    webView.loadUrl("file:///android_asset/timonauto.html")
+                    mainWebView.loadUrl("file:///android_asset/timonauto.html")
                 }
             }
         })
 
-        // Check GPS permissions
         checkAndRequestLocationPermission()
-
-        // Initialize Live Media Listener
         setupMediaSessionListener()
 
-        // Load local dashboard
-        webView.loadUrl("file:///android_asset/timonauto.html")
+        // Load local dashboard initially
+        mainWebView.loadUrl("file:///android_asset/timonauto.html")
+    }
+
+    private fun configureWebViewSettings(wv: WebView) {
+        val settings: WebSettings = wv.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.allowFileAccess = true
+        settings.setGeolocationEnabled(true)
+        
+        // Critical for uninterrupted background audio
+        settings.mediaPlaybackRequiresUserGesture = false
+        
+        // Desktop User-Agent prevents YouTube from forcing mobile constraints
+        settings.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    }
+
+    // Public method callable or triggered when user opens external sites
+    fun loadExternalUrl(url: String) {
+        runOnUiThread {
+            webFrameWebView.loadUrl(url)
+            webFrameWebView.visibility = View.VISIBLE
+        }
+    }
+
+    fun hideWebFrame() {
+        runOnUiThread {
+            webFrameWebView.visibility = View.GONE
+        }
     }
 
     /* -------------------------------------------------------------------------- */
@@ -94,7 +130,6 @@ class MainActivity : AppCompatActivity() {
 
         try {
             val controllers = mediaSessionManager.getActiveSessions(null)
-
             if (controllers.isNotEmpty()) {
                 attachMediaController(controllers[0])
             }
@@ -130,10 +165,6 @@ class MainActivity : AppCompatActivity() {
         syncCurrentMediaToWebView()
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                         DYNAMIC JAVASCRIPT INJECTION                      */
-    /* -------------------------------------------------------------------------- */
-
     private fun syncCurrentMediaToWebView() {
         val metadata = activeController?.metadata ?: return
 
@@ -152,9 +183,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         runOnUiThread {
-            // FIX CRASH: Only evaluate JS if WebView is on the lyrics player page
-            if (::webView.isInitialized && webView.url?.contains("player.html") == true) {
-                webView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+            if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
             }
         }
     }
@@ -162,10 +192,6 @@ class MainActivity : AppCompatActivity() {
     private fun fetchLrcLyricsForTrack(title: String, artist: String): String {
         return "[00:00.00] $title - $artist\n[00:02.00] Syncing live track data..."
     }
-
-    /* -------------------------------------------------------------------------- */
-    /*                            PERMISSIONS HANDLING                            */
-    /* -------------------------------------------------------------------------- */
 
     private fun checkAndRequestLocationPermission() {
         if (ContextCompat.checkSelfPermission(
@@ -192,7 +218,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                webView.reload()
+                mainWebView.reload()
             }
         }
     }
