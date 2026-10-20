@@ -19,7 +19,13 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,6 +35,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mediaSessionManager: MediaSessionManager
     private var activeController: MediaController? = null
+    private var lastArtworkUri: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +57,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // External Web Browsing Client (YouTube Music, etc.)
+        // External Web Browsing Client (YouTube Music)
         webFrameWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
@@ -88,7 +95,6 @@ class MainActivity : AppCompatActivity() {
         checkAndRequestLocationPermission()
         setupMediaSessionListener()
 
-        // Load local dashboard initially
         mainWebView.loadUrl("file:///android_asset/timonauto.html")
     }
 
@@ -102,7 +108,6 @@ class MainActivity : AppCompatActivity() {
         settings.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     }
 
-    // Toggle to YouTube Music layer without reloading/destroying session
     fun showWebFrame(url: String) {
         runOnUiThread {
             if (webFrameWebView.url != url) {
@@ -113,17 +118,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Toggle back to dashboard layer while leaving YouTube running in background
     fun showDashboard() {
         runOnUiThread {
             webFrameWebView.visibility = View.GONE
             mainWebView.visibility = View.VISIBLE
         }
     }
-
-    /* -------------------------------------------------------------------------- */
-    /*                         LIVE MEDIA SESSION LISTENER                         */
-    /* -------------------------------------------------------------------------- */
 
     private fun setupMediaSessionListener() {
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -170,27 +170,51 @@ class MainActivity : AppCompatActivity() {
 
         val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
         val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
-        val artworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
+        lastArtworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) ?: ""
 
-        val lrcLyrics = fetchLrcLyricsForTrack(title, artist)
-
-        val payload = JSONObject().apply {
-            put("title", title)
-            put("artist", artist)
-            put("coverUrl", artworkUri)
-            put("lrcLyrics", lrcLyrics)
-        }
-
-        runOnUiThread {
-            if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
-            }
-        }
+        // Fetch actual LRC lyrics asynchronously from LRCLIB.net
+        fetchLyricsFromApi(title, artist)
     }
 
-    private fun fetchLrcLyricsForTrack(title: String, artist: String): String {
-        return "[00:00.00] $title - $artist\n[00:02.00] Syncing live track data..."
+    private fun fetchLyricsFromApi(title: String, artist: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val encodedTitle = URLEncoder.encode(title, "UTF-8")
+                val encodedArtist = URLEncoder.encode(artist, "UTF-8")
+                val urlString = "https://lrclib.net/api/get?track_name=$encodedTitle&artist_name=$encodedArtist"
+
+                val url = URL(urlString)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("User-Agent", "AutoDeckApp (Personal Project)")
+
+                val lyricsText = if (connection.responseCode == 200) {
+                    val responseStr = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(responseStr)
+                    // Prioritize time-synced lyrics, fallback to plain text if unavailable
+                    json.optString("syncedLyrics", "").takeIf { it.isNotEmpty() && it != "null" }
+                        ?: json.optString("plainLyrics", "[00:00.00] No synchronized lyrics found.")
+                } else {
+                    "[00:00.00] Lyrics not found for $title"
+                }
+
+                val payload = JSONObject().apply {
+                    put("title", title)
+                    put("artist", artist)
+                    put("coverUrl", lastArtworkUri)
+                    put("lrcLyrics", lyricsText)
+                }
+
+                runOnUiThread {
+                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                        mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun checkAndRequestLocationPermission() {
