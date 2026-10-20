@@ -205,6 +205,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+    super.onResume()
+    // Re-check and sync active media session whenever returning to the app
+    setupMediaSessionListener()
+    }
+    
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
