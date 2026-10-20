@@ -41,7 +41,6 @@ class MainActivity : AppCompatActivity() {
     private var activeController: MediaController? = null
     private var lastArtworkUri: String = ""
 
-    // Handler to tick playback position every 500ms for lyrics scrolling & highlighting
     private val handler = Handler(Looper.getMainLooper())
     private val positionUpdater = object : Runnable {
         override fun run() {
@@ -67,7 +66,6 @@ class MainActivity : AppCompatActivity() {
         configureWebViewSettings(mainWebView)
         configureWebViewSettings(webFrameWebView)
 
-        // Main Dashboard Client
         mainWebView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
@@ -77,7 +75,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // External Web Browsing Client (YouTube Music)
         webFrameWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
@@ -95,7 +92,6 @@ class MainActivity : AppCompatActivity() {
         mainWebView.webChromeClient = geoChromeClient
         webFrameWebView.webChromeClient = geoChromeClient
 
-        // Hardware Back Button Handler
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (webFrameWebView.visibility == View.VISIBLE) {
@@ -200,12 +196,12 @@ class MainActivity : AppCompatActivity() {
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) ?: ""
 
-        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist \vert{} Art:$lastArtworkUri")
+        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist | Art: $lastArtworkUri")
         fetchLyricsFromApi(title, artist)
     }
 
     private fun cleanMetadataString(raw: String): String {
-        return raw.replace(Regex("(?i)\\(official video\\)|[official video]|\\(official audio\\)|\\(lyric video\\)|\\(audio\\)|\\(remix\\)"), "")
+        return raw.replace(Regex("(?i)\\(official video\\)|\\[official video\\]|\\(official audio\\)|\\(lyric video\\)|\\(audio\\)|\\(remix\\)"), "")
             .trim()
     }
 
@@ -245,6 +241,54 @@ class MainActivity : AppCompatActivity() {
                         mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
                     }
                 }
+            } catch (e: Exception) {
+                Log.e("AutoDeckDebug", "Error fetching lyrics", e)
+            }
+        }
+    }
+
+    private fun checkAndRequestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setupMediaSessionListener()
+        handler.post(positionUpdater)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(positionUpdater)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                mainWebView.reload()
+            }
+        }
+    }
+}
+            }
             } catch (e: Exception) {
                 Log.e("AutoDeckDebug", "Error fetching lyrics", e)
             }
