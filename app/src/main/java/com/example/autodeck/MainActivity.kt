@@ -1,7 +1,6 @@
 package com.example.autodeck
 
 import android.Manifest
-import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaMetadata
@@ -14,6 +13,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity() {
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
 
+        // 1. ENABLE BACKGROUND MEDIA PLAYBACK (No user gesture required)
+        settings.mediaPlaybackRequiresUserGesture = false
+
         // Geolocation Settings
         settings.setGeolocationEnabled(true)
 
@@ -54,12 +57,23 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // When player.html finishes loading, inject current playing metadata
+                // Inject current metadata only if the player page is active
                 if (url?.contains("player.html") == true) {
                     syncCurrentMediaToWebView()
                 }
             }
         }
+
+        // 2. FIX CRASH: Intercept system back button safely
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    webView.loadUrl("file:///android_asset/timonauto.html")
+                }
+            }
+        })
 
         // Check GPS permissions
         checkAndRequestLocationPermission()
@@ -79,7 +93,6 @@ class MainActivity : AppCompatActivity() {
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
 
         try {
-            // Check active media controllers (e.g. YT Music, Spotify)
             val controllers = mediaSessionManager.getActiveSessions(null)
 
             if (controllers.isNotEmpty()) {
@@ -102,7 +115,6 @@ class MainActivity : AppCompatActivity() {
     private fun attachMediaController(controller: MediaController) {
         activeController = controller
 
-        // Listen for metadata changes (Song Title, Artist, Cover Artwork)
         controller.registerCallback(object : MediaController.Callback() {
             override fun onMetadataChanged(metadata: MediaMetadata?) {
                 super.onMetadataChanged(metadata)
@@ -132,7 +144,6 @@ class MainActivity : AppCompatActivity() {
 
         val lrcLyrics = fetchLrcLyricsForTrack(title, artist)
 
-        // Construct dynamic JSON Payload safely using JSONObject
         val payload = JSONObject().apply {
             put("title", title)
             put("artist", artist)
@@ -141,7 +152,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         runOnUiThread {
-            webView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+            // FIX CRASH: Only evaluate JS if WebView is on the lyrics player page
+            if (::webView.isInitialized && webView.url?.contains("player.html") == true) {
+                webView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+            }
         }
     }
 
