@@ -178,7 +178,7 @@ function openBookmarkUrl(url) {
 }
 
 function goHome() {
-    window.location.href = "file:///android_asset/timonauto.html";
+    window.location.href = "timonauto.html";
 }
 
 renderBookmarks();
