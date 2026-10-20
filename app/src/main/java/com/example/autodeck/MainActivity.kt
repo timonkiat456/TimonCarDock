@@ -18,36 +18,34 @@ class MainActivity : AppCompatActivity() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate()
+        super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
         val settings: WebSettings = webView.settings
 
-        // 1. Enable JavaScript and DOM Storage
+        // JavaScript & DOM Storage
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
 
-        // 2. Enable Geolocation Settings
+        // Geolocation Settings
         settings.setGeolocationEnabled(true)
 
-        // 3. Set WebChromeClient to automatically grant HTML5 Geolocation requests
         webView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
             ) {
-                // Grant geolocation permission to JavaScript in WebView
                 callback?.invoke(origin, true, false)
             }
         }
 
         webView.webViewClient = WebViewClient()
 
-        // 4. Check for Android Runtime Location Permissions
+        // Check GPS permissions
         checkAndRequestLocationPermission()
 
-        // 5. Load your local HTML dashboard or remote URL
+        // Load local dashboard
         webView.loadUrl("file:///android_asset/timonauto.html")
     }
 
@@ -76,7 +74,6 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Reload WebView once permissions are granted so JavaScript can acquire GPS
                 webView.reload()
             }
         }
