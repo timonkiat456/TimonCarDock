@@ -2,9 +2,9 @@ package com.example.autodeck
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.webkit.JsPromptResult
+import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -16,54 +16,34 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        
+        webView = WebView(this)
+        setContentView(webView)
 
-        webView = findViewById(R.id.webView)
+        val settings: WebSettings = webView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.databaseEnabled = true
+        settings.setGeolocationEnabled(true)
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-        webView.settings.apply {
-            // Enable JavaScript execution for HTML logic
-            javaScriptEnabled = true
-            
-            // Enable LocalStorage API for persisting custom shortcuts/bookmarks
-            domStorageEnabled = true
-            databaseEnabled = true
-            
-            // Allow responsive mobile scaling
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            
-            // Bypass YouTube/Google anti-embed blocks by identifying as standard mobile Chrome
-            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-        }
-
-        // Keep page transitions inside the app container
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false
-            }
-        }
-
-        // Enable JavaScript alert/prompt dialogs (e.g., adding bookmark titles)
+        webView.webViewClient = WebViewClient()
         webView.webChromeClient = object : WebChromeClient() {
-            override fun onJsPrompt(
-                view: WebView?,
-                url: String?,
-                message: String?,
-                defaultValue: String?,
-                result: JsPromptResult?
-            ): Boolean {
-                // Handled natively by Android WebChromeClient for prompt UI
-                return super.onJsPrompt(view, url, message, defaultValue, result)
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                // Automatically grant geolocation permission for weather widgets
+                callback?.invoke(origin, true, false)
             }
         }
 
-        // Load the local timonauto.html dashboard from app/src/main/assets/
+        // Load your local HTML dashboard file from assets
         webView.loadUrl("file:///android_asset/timonauto.html")
     }
 
-    // Handle back button navigation inside WebView history
     override fun onBackPressed() {
-        if (::webView.isInitialized && webView.canGoBack()) {
+        if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
