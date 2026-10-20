@@ -1,6 +1,7 @@
 package com.example.autodeck
 
-import android.annotation.SuppressLint
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
@@ -8,45 +9,76 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        webView = WebView(this)
-        setContentView(webView)
+        super.onCreate()
+        setContentView(R.layout.activity_main)
 
+        webView = findViewById(R.id.webView)
         val settings: WebSettings = webView.settings
+
+        // 1. Enable JavaScript and DOM Storage
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
-        settings.databaseEnabled = true
-        settings.setGeolocationEnabled(true)
-        settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-        webView.webViewClient = WebViewClient()
+        // 2. Enable Geolocation Settings
+        settings.setGeolocationEnabled(true)
+
+        // 3. Set WebChromeClient to automatically grant HTML5 Geolocation requests
         webView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
             ) {
-                // Automatically grant geolocation permission for weather widgets
+                // Grant geolocation permission to JavaScript in WebView
                 callback?.invoke(origin, true, false)
             }
         }
 
-        // Load your local HTML dashboard file from assets
+        webView.webViewClient = WebViewClient()
+
+        // 4. Check for Android Runtime Location Permissions
+        checkAndRequestLocationPermission()
+
+        // 5. Load your local HTML dashboard or remote URL
         webView.loadUrl("file:///android_asset/timonauto.html")
     }
 
-    override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+    private fun checkAndRequestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Reload WebView once permissions are granted so JavaScript can acquire GPS
+                webView.reload()
+            }
         }
     }
 }
