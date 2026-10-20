@@ -1,6 +1,7 @@
 package com.example.autodeck
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaMetadata
@@ -125,7 +126,8 @@ class MainActivity : AppCompatActivity() {
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
 
         try {
-            val controllers = mediaSessionManager.getActiveSessions(null)
+            val listenerComponent = ComponentName(this, AutoDeckMediaListener::class.java)
+            val controllers = mediaSessionManager.getActiveSessions(listenerComponent)
             Log.d("AutoDeckDebug", "Active controllers found: ${controllers.size}")
 
             if (controllers.isNotEmpty()) {
@@ -139,7 +141,7 @@ class MainActivity : AppCompatActivity() {
                         attachMediaController(activeControllers[0])
                     }
                 },
-                null
+                listenerComponent
             )
         } catch (e: SecurityException) {
             Log.e("AutoDeckDebug", "SecurityException: Notification Access not granted", e)
@@ -206,11 +208,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onResume() {
-    super.onResume()
-    // Re-check and sync active media session whenever returning to the app
-    setupMediaSessionListener()
+        super.onResume()
+        setupMediaSessionListener()
     }
-    
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
