@@ -1,9 +1,11 @@
 package com.example.autodeck
 
+import android.content.Intent
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 
 class AutoDeckMediaService : MediaBrowserServiceCompat() {
@@ -13,17 +15,22 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
     override fun onCreate() {
         super.onCreate()
 
-        // 1. Initialize MediaSessionCompat and assign session token
-        mediaSession = MediaSessionCompat(this, "AutoDeckMediaService")
+        mediaSession = MediaSessionCompat(this, "AutoDeckMediaService").apply {
+            setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            
+            val state = PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                .setState(PlaybackStateCompat.STATE_PLAYING, 0, 1.0f)
+                .build()
+                
+            setPlaybackState(state)
+            isActive = true
+        }
+        
         sessionToken = mediaSession.sessionToken
     }
 
-    override fun onGetRoot(
-        clientPackageName: String,
-        clientUid: Int,
-        rootHints: Bundle?
-    ): BrowserRoot {
-        // Return a valid root ID
+    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot {
         return BrowserRoot("autodeck_root", null)
     }
 
@@ -33,11 +40,10 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
     ) {
         val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
 
-        // 2. Return a dummy playable item so Android Auto stops loading
         val description = MediaDescriptionCompat.Builder()
-            .setMediaId("autodeck_dashboard_item")
-            .setTitle("Open Dashboard")
-            .setSubtitle("Tap to launch AutoDeck")
+            .setMediaId("autodeck_stream")
+            .setTitle("Launch AutoDeck Dashboard")
+            .setSubtitle("Tap to start UI display")
             .build()
 
         mediaItems.add(
@@ -48,6 +54,12 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
         )
 
         result.sendResult(mediaItems)
+
+        // Launch the phone-side foreground activity to render the dashboard
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
     }
 
     override fun onDestroy() {
