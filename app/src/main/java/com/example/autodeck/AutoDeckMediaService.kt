@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media.MediaBrowserServiceCompat
 
 class AutoDeckMediaService : MediaBrowserServiceCompat() {
@@ -12,11 +13,24 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        
-        // Initialize the media session so Android Auto recognizes a valid token
+
+        // Create media session and set active playback state
         mediaSession = MediaSessionCompat(this, "AutoDeckMediaService").apply {
+            setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+            )
+            
+            // Set state to NONE/STOPPED so AA knows the session is ready
+            val state = PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                .setState(PlaybackStateCompat.STATE_NONE, 0, 1.0f)
+                .build()
+            setPlaybackState(state)
+            
             isActive = true
         }
+
         sessionToken = mediaSession.sessionToken
     }
 
@@ -25,7 +39,8 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
         clientUid: Int,
         rootHints: Bundle?
     ): BrowserRoot {
-        return BrowserRoot("autodeck_root", null)
+        // Return root ID unconditionally
+        return BrowserRoot("root_id", null)
     }
 
     override fun onLoadChildren(
@@ -34,21 +49,21 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
     ) {
         val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
 
-        if (parentId == "autodeck_root") {
-            val description = MediaDescriptionCompat.Builder()
-                .setMediaId("autodeck_dashboard_item")
-                .setTitle("AutoDeck Dashboard")
-                .setSubtitle("Tap to load dashboard")
-                .build()
+        // Create a root item that Android Auto can render as a playable button
+        val description = MediaDescriptionCompat.Builder()
+            .setMediaId("autodeck_dashboard")
+            .setTitle("Open Dashboard")
+            .setSubtitle("Tap to launch AutoDeck WebView")
+            .build()
 
-            mediaItems.add(
-                MediaBrowserCompat.MediaItem(
-                    description,
-                    MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
-                )
+        mediaItems.add(
+            MediaBrowserCompat.MediaItem(
+                description,
+                MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
             )
-        }
+        )
 
+        // Must send result synchronously
         result.sendResult(mediaItems)
     }
 
