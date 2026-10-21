@@ -47,7 +47,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    loadUrl("file:///android_asset/index.html")
+                    loadUrl("file:///android_asset/timonauto.html")
                 }
 
                 presentation?.setContentView(webView)
