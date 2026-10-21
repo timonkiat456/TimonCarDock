@@ -32,19 +32,5 @@
             </intent-filter>
         </service>
 
-        <!-- Fermata-Style Media Browser Service Declaration -->
-        <service
-            android:name=".AutoDeckMediaService"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-        </service>
-
-        <!-- Tells Android Auto to register this as an allowed Media App -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
-
     </application>
 </manifest>
