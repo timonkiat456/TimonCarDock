@@ -40,12 +40,12 @@
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
+            
+            <!-- Google Automotive Metadata (Properly nested inside the service tag) -->
+            <meta-data
+                android:name="com.google.android.gms.car.application"
+                android:resource="@xml/automotive_app_desc" />
         </service>
-
-        <!-- Google Automotive Metadata -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
 
     </application>
 </manifest>
