@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
-        <!-- Mobile Launcher Activity -->
+        <!-- Mobile Phone Launcher Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -22,30 +22,20 @@
             </intent-filter>
         </activity>
 
-        <!-- Notification Listener Service -->
-        <service 
-            android:name=".AutoDeckMediaListener"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+        <!-- Native Android Auto CarAppService -->
+        <service
+            android:name=".AutoDeckCarService"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.IOT" />
             </intent-filter>
         </service>
 
-        <!-- Official Android Auto Media Browser Service -->
-        <service
-            android:name=".AutoDeckMediaService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
-            <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
-            </intent-filter>
-            
-            <!-- Google Automotive Metadata (Properly nested inside the service tag) -->
-            <meta-data
-                android:name="com.google.android.gms.car.application"
-                android:resource="@xml/automotive_app_desc" />
-        </service>
+        <!-- Set Minimum Supported Car API Level -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
 
     </application>
 </manifest>
