@@ -6,9 +6,6 @@ import androidx.car.app.Screen
 import androidx.car.app.Session
 import androidx.car.app.model.Action
 import androidx.car.app.model.Header
-import androidx.car.app.model.ItemList
-import androidx.car.app.model.GridItem
-import androidx.car.app.model.GridTemplate
 import androidx.car.app.model.Pane
 import androidx.car.app.model.PaneTemplate
 import androidx.car.app.model.Row
@@ -22,38 +19,33 @@ class AutoDeckSession : Session() {
 
 class DashboardMainScreen(carContext: CarContext) : Screen(carContext) {
 
-    // Mock state variable for dynamic UI testing
     private var isSystemActive = true
 
     override fun onGetTemplate(): Template {
-        // 1. Build status summary row
         val statusRow = Row.Builder()
             .setTitle("AutoDeck Status")
-            .addText(if (isSystemActive) "Status: Online | All Services Running" else "Status: Offline")
+            .addText(if (isSystemActive) "Status: Online | Native Template Running" else "Status: Paused")
             .build()
 
-        // 2. Build detailed metrics row
         val metricsRow = Row.Builder()
             .setTitle("Vehicle Telemetry")
-            .addText("Connection: Active | High-Speed Sync")
+            .addText("Haval H6 HEV Dashboard Link Active")
             .build()
 
-        // 3. Assemble rows into a Pane
         val pane = Pane.Builder()
             .addRow(statusRow)
             .addRow(metricsRow)
             .addAction(
                 Action.Builder()
-                    .setTitle(if (isSystemActive) "Pause Dashboard" else "Start Dashboard")
+                    .setTitle(if (isSystemActive) "Pause Dashboard" else "Resume Dashboard")
                     .setOnClickListener {
                         isSystemActive = !isSystemActive
-                        invalidate() // Request UI re-render
+                        invalidate() // Triggers UI redraw on the car screen
                     }
                     .build()
             )
             .build()
 
-        // 4. Return native PaneTemplate with Header
         return PaneTemplate.Builder(pane)
             .setHeader(
                 Header.Builder()
