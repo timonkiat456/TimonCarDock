@@ -3,6 +3,8 @@ package com.example.autodeck
 import android.app.Presentation
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.car.app.CarContext
@@ -15,42 +17,57 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
     private var presentation: Presentation? = null
 
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
-    val surface = surfaceContainer.surface
-    val width = surfaceContainer.width
-    val height = surfaceContainer.height
+        val surface = surfaceContainer.surface
+        val width = surfaceContainer.width
+        val height = surfaceContainer.height
 
-    // Guard against uninitialized surface dimensions
-    if (surface == null || width <= 0 || height <= 0) return
+        // Guard against uninitialized dimensions (0x0 surface causes crash)
+        if (surface == null || width <= 0 || height <= 0) return
 
-    try {
-        virtualDisplay = carContext.getSystemService(DisplayManager::class.java)?.createVirtualDisplay(
-            "AutoDeckVirtualDisplay",
-            width,
-            height,
-            surfaceContainer.dpi,
-            surface,
-            0
-        )
+        // Force UI thread execution for WebView and Presentation creation
+        Handler(Looper.getMainLooper()).post {
+            try {
+                // 1. Create the VirtualDisplay on the car's surface buffer
+                virtualDisplay = carContext.getSystemService(DisplayManager::class.java)?.createVirtualDisplay(
+                    "AutoDeckVirtualDisplay",
+                    width,
+                    height,
+                    surfaceContainer.dpi,
+                    surface,
+                    0
+                )
 
-        val display = virtualDisplay?.display ?: return
-        presentation = Presentation(carContext, display)
+                val display = virtualDisplay?.display ?: return@post
 
-        val webView = WebView(carContext).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            loadUrl("file:///android_asset/index.html")
+                // 2. Instantiate Presentation container
+                presentation = Presentation(carContext, display)
+
+                // 3. Instantiate WebView safely on the main thread
+                val webView = WebView(carContext).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    loadUrl("file:///android_asset/index.html")
+                }
+
+                presentation?.setContentView(webView)
+                presentation?.show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-
-        presentation?.setContentView(webView)
-        presentation?.show()
-    } catch (e: Exception) {
-        e.printStackTrace()
     }
-}
-
 
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {
-        presentation?.dismiss()
-        virtualDisplay?.release()
+        Handler(Looper.getMainLooper()).post {
+            try {
+                presentation?.dismiss()
+                presentation = null
+                virtualDisplay?.release()
+                virtualDisplay = null
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }
