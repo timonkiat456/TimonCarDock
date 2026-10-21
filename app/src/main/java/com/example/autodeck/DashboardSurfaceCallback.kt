@@ -44,10 +44,18 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
 
                 // 3. Instantiate WebView safely on the main thread
                 val webView = WebView(carContext).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    loadUrl("file:///android_asset/timonauto.html")
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                        allowFileAccess = true
+                        allowContentAccess = true
+                        @Suppress("DEPRECATION")
+                        allowFileAccessFromFileURLs = true
+                        @Suppress("DEPRECATION")
+                        allowUniversalAccessFromFileURLs = true
+                    }
+                    loadUrl("file:///android_asset/player.html")
                 }
 
                 presentation?.setContentView(webView)
