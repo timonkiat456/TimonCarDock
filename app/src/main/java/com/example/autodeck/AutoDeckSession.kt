@@ -5,24 +5,43 @@ import androidx.car.app.AppManager
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.Session
+import androidx.car.app.model.Action
+import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 
 class AutoDeckSession : Session() {
 
     override fun onCreateScreen(intent: Intent): Screen {
-        // Register the surface callback with Android Auto to intercept the drawing surface
-        carContext.getCarService(AppManager::class.java)
-            .setSurfaceCallback(DashboardSurfaceCallback(carContext))
-
         return DashboardMainScreen(carContext)
     }
 }
 
 class DashboardMainScreen(carContext: CarContext) : Screen(carContext) {
 
+    private val surfaceCallback = DashboardSurfaceCallback(carContext)
+
+    init {
+        // Safely attach the surface callback when the screen initializes
+        carContext.getCarService(AppManager::class.java)
+            .setSurfaceCallback(surfaceCallback)
+    }
+
     override fun onGetTemplate(): Template {
-        // NavigationTemplate instructs Android Auto to allocate a full surface canvas
-        return NavigationTemplate.Builder().build()
+        // Android Auto REQUIRES an ActionStrip on NavigationTemplate
+        val actionStrip = ActionStrip.Builder()
+            .addAction(
+                Action.Builder()
+                    .setTitle("Dashboard")
+                    .setOnClickListener {
+                        // Refresh or menu action handler
+                    }
+                    .build()
+            )
+            .build()
+
+        return NavigationTemplate.Builder()
+            .setActionStrip(actionStrip)
+            .build()
     }
 }
