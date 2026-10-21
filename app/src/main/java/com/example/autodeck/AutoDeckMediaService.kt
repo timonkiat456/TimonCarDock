@@ -3,17 +3,29 @@ package com.example.autodeck
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.media.MediaBrowserServiceCompat
 
 class AutoDeckMediaService : MediaBrowserServiceCompat() {
+
+    private lateinit var mediaSession: MediaSessionCompat
+
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Initialize the media session so Android Auto recognizes a valid token
+        mediaSession = MediaSessionCompat(this, "AutoDeckMediaService").apply {
+            isActive = true
+        }
+        sessionToken = mediaSession.sessionToken
+    }
 
     override fun onGetRoot(
         clientPackageName: String,
         clientUid: Int,
         rootHints: Bundle?
     ): BrowserRoot {
-        // Accept connection from Android Auto system
-        return BrowserRoot("root_id", null)
+        return BrowserRoot("autodeck_root", null)
     }
 
     override fun onLoadChildren(
@@ -22,12 +34,11 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
     ) {
         val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
 
-        if (parentId == "root_id") {
-            // Provide a clickable item that represents your dashboard/player view
+        if (parentId == "autodeck_root") {
             val description = MediaDescriptionCompat.Builder()
-                .setMediaId("dashboard_item")
+                .setMediaId("autodeck_dashboard_item")
                 .setTitle("AutoDeck Dashboard")
-                .setSubtitle("Live Lyrics & Media")
+                .setSubtitle("Tap to load dashboard")
                 .build()
 
             mediaItems.add(
@@ -39,5 +50,10 @@ class AutoDeckMediaService : MediaBrowserServiceCompat() {
         }
 
         result.sendResult(mediaItems)
+    }
+
+    override fun onDestroy() {
+        mediaSession.release()
+        super.onDestroy()
     }
 }
