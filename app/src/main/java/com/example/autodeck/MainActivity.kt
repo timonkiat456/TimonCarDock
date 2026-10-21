@@ -43,23 +43,25 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val positionUpdater = object : Runnable {
-    override fun run() {
-        activeController?.playbackState?.let { state ->
-            if (state.state == PlaybackState.STATE_PLAYING) {
-                val currentPositionSec = state.position / 1000.0
-                
-                // Add this log to check Logcat while playing music:
-                Log.d("AutoDeckDebug", "Current Playback Position: $currentPositionSec seconds")
+        override fun run() {
+            activeController?.playbackState?.let { state ->
+                if (state.state == PlaybackState.STATE_PLAYING) {
+                    val currentPositionSec = state.position / 1000.0
+                    
+                    Log.d("AutoDeckDebug", "Current Playback Position: $currentPositionSec seconds")
 
-                if (currentPositionSec >= 0 && ::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                    mainWebView.evaluateJavascript("if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }", null)
+                    val script = "if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }"
+                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
+                        mainWebView.evaluateJavascript(script, null)
+                    }
+                    if (::webFrameWebView.isInitialized && webFrameWebView.url?.contains("player.html") == true) {
+                        webFrameWebView.evaluateJavascript(script, null)
+                    }
                 }
             }
+            handler.postDelayed(this, 500)
         }
-        handler.postDelayed(this, 500)
     }
-}
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +85,12 @@ class MainActivity : AppCompatActivity() {
         webFrameWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 return false
+            }
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                if (url?.contains("player.html") == true) {
+                    syncCurrentMediaToWebView()
+                }
             }
         }
 
@@ -127,6 +135,10 @@ class MainActivity : AppCompatActivity() {
         settings.setGeolocationEnabled(true)
         settings.mediaPlaybackRequiresUserGesture = false
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        @Suppress("DEPRECATION")
+        settings.allowFileAccessFromFileURLs = true
+        @Suppress("DEPRECATION")
+        settings.allowUniversalAccessFromFileURLs = true
         settings.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     }
 
@@ -242,12 +254,62 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 runOnUiThread {
+                    val script = "if (typeof loadSongData === 'function') { loadSongData($payload); }"
                     if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                        mainWebView.evaluateJavascript("if (typeof loadSongData === 'function') { loadSongData($payload); }", null)
+                        mainWebView.evaluateJavascript(script, null)
+                    }
+                    if (::webFrameWebView.isInitialized && webFrameWebView.url?.contains("player.html") == true) {
+                        webFrameWebView.evaluateJavascript(script, null)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("AutoDeckDebug", "Error fetching lyrics", e)
+            }
+        }
+    }
+
+    private fun checkAndRequestLocationPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setupMediaSessionListener()
+        handler.post(positionUpdater)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(positionUpdater)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                mainWebView.reload()
+            }
+        }
+    }
+}
+            Log.e("AutoDeckDebug", "Error fetching lyrics", e)
             }
         }
     }
