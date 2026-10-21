@@ -15,34 +15,39 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
     private var presentation: Presentation? = null
 
     override fun onSurfaceAvailable(surfaceContainer: SurfaceContainer) {
-        if (surfaceContainer.width == 0 || surfaceContainer.height == 0) return
+    val surface = surfaceContainer.surface
+    val width = surfaceContainer.width
+    val height = surfaceContainer.height
 
-        // 1. Create a VirtualDisplay bound to the car screen's surface buffer
-        virtualDisplay = carContext.getSystemService(DisplayManager::class.java).createVirtualDisplay(
+    // Guard against uninitialized surface dimensions
+    if (surface == null || width <= 0 || height <= 0) return
+
+    try {
+        virtualDisplay = carContext.getSystemService(DisplayManager::class.java)?.createVirtualDisplay(
             "AutoDeckVirtualDisplay",
-            surfaceContainer.width,
-            surfaceContainer.height,
+            width,
+            height,
             surfaceContainer.dpi,
-            surfaceContainer.surface,
+            surface,
             0
         )
 
         val display = virtualDisplay?.display ?: return
-
-        // 2. Instantiate a Presentation UI on that display
         presentation = Presentation(carContext, display)
 
-        // 3. Create a WebView and load your existing HTML/JS assets
         val webView = WebView(carContext).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            loadUrl("file:///android_asset/index.html") // Points to your HTML asset
+            loadUrl("file:///android_asset/index.html")
         }
 
         presentation?.setContentView(webView)
         presentation?.show()
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
+}
+
 
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {
         presentation?.dismiss()
