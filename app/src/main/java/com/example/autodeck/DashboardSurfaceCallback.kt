@@ -90,7 +90,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                         @Suppress("DEPRECATION")
                         allowUniversalAccessFromFileURLs = true
                     }
-                    loadUrl("file:///android_asset/player.html")
+                    loadUrl("file:///android_asset/timonauto.html")
                 }
 
                 presentation?.setContentView(carWebView!!)
