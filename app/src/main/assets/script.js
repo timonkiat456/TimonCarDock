@@ -6,7 +6,7 @@ document.getElementById('goBtn').onclick = loadUserUrl;
 document.getElementById('addBtn').onclick = addBookmark;
 document.getElementById('ytBtn').onclick = function() { openBookmarkUrl('https://m.youtube.com'); };
 document.getElementById('ytMusicBtn').onclick = function() { openBookmarkUrl('https://music.youtube.com'); };
-document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('player.html'); };
+document.getElementById('lyricsBtn').onclick = function() { openBookmarkUrl('timonauto.html'); };
 
 document.getElementById('backBtn').onclick = function() { history.back(); };
 document.getElementById('forwardBtn').onclick = function() { history.forward(); };
@@ -173,18 +173,16 @@ function deleteBookmark(index) {
     renderBookmarks();
 }
 
-// Seamless Layer Switching (Keeps YouTube Music running in the background)
+// Seamless Layer Switching
 function openBookmarkUrl(url) {
-    if (url === "player.html") {
-        window.location.href = "player.html";
+    if (url === "timonauto.html") {
+        window.location.href = "timonauto.html";
         return;
     }
     
-    // Check if running inside Android app interface
     if (window.AndroidBridge && typeof window.AndroidBridge.showWebFrame === 'function') {
         window.AndroidBridge.showWebFrame(url);
     } else {
-        // Fallback for browser testing
         window.location.href = url;
     }
 }
@@ -196,6 +194,5 @@ function goHome() {
         window.location.href = "timonauto.html";
     }
 }
-
 
 renderBookmarks();
