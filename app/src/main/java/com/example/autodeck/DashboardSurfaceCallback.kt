@@ -80,19 +80,28 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     isFocusableInTouchMode = true
                     requestFocus(View.FOCUS_DOWN)
 
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        allowFileAccess = true
-                        allowContentAccess = true
-                        @Suppress("DEPRECATION")
-                        allowFileAccessFromFileURLs = true
-                        @Suppress("DEPRECATION")
-                        allowUniversalAccessFromFileURLs = true
-                    }
-                    loadUrl("file:///android_asset/timonauto.html")
-                }
+    // 1. Enable cookies for Google/YouTube sessions
+    val cookieManager = android.webkit.CookieManager.getInstance()
+    cookieManager.setAcceptCookie(true)
+    cookieManager.setAcceptThirdPartyCookies(this, true)
+
+    settings.apply {
+        javaScriptEnabled = true
+        domStorageEnabled = true
+        
+        // 2. Spoof User-Agent to disguise the WebView as a desktop Chrome browser
+        userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        allowFileAccess = true
+        allowContentAccess = true
+        @Suppress("DEPRECATION")
+        allowFileAccessFromFileURLs = true
+        @Suppress("DEPRECATION")
+        allowUniversalAccessFromFileURLs = true
+    }
+    loadUrl("file:///android_asset/timonauto.html")
+    }
 
                 presentation?.setContentView(carWebView!!)
                 presentation?.show()
