@@ -15,8 +15,10 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.car.app.CarContext
 import androidx.car.app.SurfaceCallback
 import androidx.car.app.SurfaceContainer
@@ -86,6 +88,17 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     // Force GPU hardware acceleration
                     setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
+                    // Ensure WebViewClient handles URL loading inside the presentation cleanly
+                    webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                            return false
+                        }
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            Log.d("AutoDeckDebug", "Car WebView page loaded successfully: $url")
+                        }
+                    }
+
                     // Safe Cookie Sync Bridge
                     try {
                         val systemCookieManager = android.webkit.CookieManager.getInstance()
@@ -101,10 +114,9 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                             carCookieManager.setCookie("https://www.youtube.com", sessionCookies)
                             carCookieManager.setCookie("https://music.youtube.com", sessionCookies)
                             carCookieManager.flush()
-                            Log.d("AutoDeckDebug", "Successfully synced session cookies to car WebView!")
                         }
                     } catch (e: Exception) {
-                        Log.e("AutoDeckDebug", "Cookie sync failed, proceeding with load", e)
+                        Log.e("AutoDeckDebug", "Cookie sync failed", e)
                     }
 
                     settings.apply {
@@ -120,7 +132,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                         allowUniversalAccessFromFileURLs = true
                     }
 
-                    // Force explicit dimensions
+                    // Force explicit initial sizing
                     measure(
                         View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                         View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
