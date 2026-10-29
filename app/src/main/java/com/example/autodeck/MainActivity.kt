@@ -1,5 +1,8 @@
 package com.example.autodeck
 
+
+import android.content.Intent
+import android.net.Uri
 import android.Manifest
 import android.content.ComponentName
 import android.content.Context
