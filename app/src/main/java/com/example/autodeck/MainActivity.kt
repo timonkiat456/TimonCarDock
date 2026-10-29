@@ -63,12 +63,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    companion object {
+        private var instance: MainActivity? = null
+
+        fun dispatchTouchToWebView(event: MotionEvent) {
+            instance?.let { activity ->
+                activity.runOnUiThread {
+                    if (activity.mainWebView.visibility == View.VISIBLE) {
+                        activity.mainWebView.dispatchTouchEvent(event)
+                    } else if (activity.webFrameWebView.visibility == View.VISIBLE) {
+                        activity.webFrameWebView.dispatchTouchEvent(event)
+                    }
+                }
+            }
+        }
+    }
+
     fun openGoogleLoginInApp() {
-        showWebFrame("https://accounts.google.com/ServiceLogin?continue=https://www.youtube.com")
+        showWebFrame("https://accounts.google.com/ServiceLogin")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
         setContentView(R.layout.activity_main)
 
         mainWebView = findViewById(R.id.webView)
@@ -240,163 +257,6 @@ class MainActivity : AppCompatActivity() {
                         ?: json.optString("plainLyrics", "[00:00.00] No synchronized lyrics found.")
                 } else {
                     "[00:00.00] Lyrics not found for $rawTitle"
-                }
-
-                val payload = JSONObject().apply {
-                    put("title", rawTitle)
-                    put("artist", rawArtist)
-                    put("coverUrl", lastArtworkUri)
-                    put("lrcLyrics", lyricsText)
-                }
-
-                runOnUiThread {
-                    val script = "if (typeof loadSongData === 'function') { loadSongData($payload); }"
-                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                        mainWebView.evaluateJavascript(script, null)
-                    }
-                    if (::webFrameWebView.isInitialized && webFrameWebView.url?.contains("player.html") == true) {
-                        webFrameWebView.evaluateJavascript(script, null)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("AutoDeckDebug", "Error fetching lyrics", e)
-            }
-        }
-    }
-
-    private fun checkAndRequestLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        setupMediaSessionListener()
-        handler.post(positionUpdater)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(positionUpdater)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                mainWebView.reload()
-            }
-        }
-    }
-}
-put("title", rawTitle)
-                    put("artist", rawArtist)
-                    put("coverUrl", lastArtworkUri)
-                    put("lrcLyrics", lyricsText)
-                }
-
-                runOnUiThread {
-                    val script = "if (typeof loadSongData === 'function') { loadSongData($payload); }"
-                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                        mainWebView.evaluateJavascript(script, null)
-                    }
-                    if (::webFrameWebView.isInitialized && webFrameWebView.url?.contains("player.html") == true) {
-                        webFrameWebView.evaluateJavascript(script, null)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("AutoDeckDebug", "Error fetching lyrics", e)
-            }
-        }
-    }
-
-    private fun checkAndRequestLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        setupMediaSessionListener()
-        handler.post(positionUpdater)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(positionUpdater)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                mainWebView.reload()
-            }
-        }
-    }
-}
-put("title", rawTitle)
-                    put("artist", rawArtist)
-                    put("coverUrl", lastArtworkUri)
-                    put("lrcLyrics", lyricsText)
-                }
-
-                runOnUiThread {
-                    val script = "if (typeof loadSongData === 'function') { loadSongData($payload); }"
-                    if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
-                        mainWebView.evaluateJavascript(script, null)
-                    }
-                    if (::webFrameWebView.isInitialized && webFrameWebView.url?.contains("player.html") == true) {
-                        webFrameWebView.evaluateJavascript(script, null)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("AutoDeckDebug", "Error fetching lyrics", e)
-            }
-        }
-    }
-
-    private fun checkAndRequestLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        setupMediaSessionListener()
-        handler.post(positionUpdater)
-    }
-
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(positionUpdater)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                mainWebView.reload()
-            }
-        }
-    }
-}
-le"
                 }
 
                 val payload = JSONObject().apply {
