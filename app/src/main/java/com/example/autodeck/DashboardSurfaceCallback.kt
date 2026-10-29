@@ -74,24 +74,41 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                 val display = virtualDisplay?.display ?: return@post
                 presentation = Presentation(carContext, display)
 
-                carWebView = WebView(carContext).apply {
-                    isClickable = true
-                    isFocusable = true
-                    isFocusableInTouchMode = true
-                    requestFocus(View.FOCUS_DOWN)
+carWebView = WebView(carContext).apply {
+    isClickable = true
+    isFocusable = true
+    isFocusableInTouchMode = true
+    requestFocus(View.FOCUS_DOWN)
 
-    // 1. Enable cookies for Google/YouTube sessions
-    val cookieManager = android.webkit.CookieManager.getInstance()
-    cookieManager.setAcceptCookie(true)
-    cookieManager.setAcceptThirdPartyCookies(this, true)
+    // Force GPU hardware acceleration for smooth UI performance
+    setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
+    // === ADD THIS COOKIE SYNC BRIDGE HERE ===
+    val systemCookieManager = android.webkit.CookieManager.getInstance()
+    systemCookieManager.setAcceptCookie(true)
+    
+    // Grab active session cookies from the phone system storage
+    val sessionCookies = systemCookieManager.getCookie("https://youtube.com") 
+        ?: systemCookieManager.getCookie("https://google.com")
+    
+    if (!sessionCookies.isNullOrEmpty()) {
+        val carCookieManager = android.webkit.CookieManager.getInstance()
+        carCookieManager.setAcceptCookie(true)
+        carCookieManager.setAcceptThirdPartyCookies(this, true)
+        
+        // Inject them into the car WebView instance
+        carCookieManager.setCookie("https://www.youtube.com", sessionCookies)
+        carCookieManager.flush()
+        Log.d("AutoDeckDebug", "Successfully synced session cookies to car WebView!")
+    } else {
+        Log.d("AutoDeckDebug", "No active session found. Please log in via phone browser first.")
+    }
+    // =========================================
 
     settings.apply {
         javaScriptEnabled = true
         domStorageEnabled = true
-        
-        // 2. Spoof User-Agent to disguise the WebView as a desktop Chrome browser
         userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
         mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         allowFileAccess = true
         allowContentAccess = true
@@ -101,7 +118,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         allowUniversalAccessFromFileURLs = true
     }
     loadUrl("file:///android_asset/timonauto.html")
-    }
+}
 
                 presentation?.setContentView(carWebView!!)
                 presentation?.show()
