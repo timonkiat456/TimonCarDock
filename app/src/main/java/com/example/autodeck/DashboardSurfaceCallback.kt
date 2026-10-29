@@ -98,6 +98,7 @@ carWebView = WebView(carContext).apply {
         
         // Inject them into the car WebView instance
         carCookieManager.setCookie("https://www.youtube.com", sessionCookies)
+        carCookieManager.setCookie("https://music.youtube.com", sessionCookies)
         carCookieManager.flush()
         Log.d("AutoDeckDebug", "Successfully synced session cookies to car WebView!")
     } else {
