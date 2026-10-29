@@ -68,25 +68,9 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    fun openGoogleLoginInPhoneBrowser() {
-    val loginIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.google.com/"))
-    startActivity(loginIntent)
-    }
-    
-    companion object {
-        private var instance: MainActivity? = null
-
-        fun dispatchTouchToWebView(event: MotionEvent) {
-            instance?.let { activity ->
-                activity.runOnUiThread {
-                    if (activity.mainWebView.visibility == View.VISIBLE) {
-                        activity.mainWebView.dispatchTouchEvent(event)
-                    } else if (activity.webFrameWebView.visibility == View.VISIBLE) {
-                        activity.webFrameWebView.dispatchTouchEvent(event)
-                    }
-                }
-            }
-        }
+    // Replace your old external intent function with this:
+    fun openGoogleLoginInApp() {
+        showWebFrame("https://accounts.google.com/ServiceLogin?continue=https://www.youtube.com")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
