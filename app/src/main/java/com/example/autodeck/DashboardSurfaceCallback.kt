@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.car.app.CarContext
@@ -57,13 +58,10 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         val width = surfaceContainer.width
         val height = surfaceContainer.height
 
-        // Guard against uninitialized dimensions (0x0 surface causes crash)
         if (surface == null || width <= 0 || height <= 0) return
 
-        // Force UI thread execution for WebView and Presentation creation
         Handler(Looper.getMainLooper()).post {
             try {
-                // 1. Create the VirtualDisplay on the car's surface buffer
                 virtualDisplay = carContext.getSystemService(DisplayManager::class.java)?.createVirtualDisplay(
                     "AutoDeckVirtualDisplay",
                     width,
@@ -74,11 +72,8 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                 )
 
                 val display = virtualDisplay?.display ?: return@post
-
-                // 2. Instantiate Presentation container
                 presentation = Presentation(carContext, display)
 
-                // 3. Instantiate WebView safely on the main thread with explicit touch focus flags
                 carWebView = WebView(carContext).apply {
                     isClickable = true
                     isFocusable = true
@@ -102,7 +97,6 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                 presentation?.setContentView(carWebView!!)
                 presentation?.show()
 
-                // 4. Initialize media session monitoring for the car display
                 setupMediaSessionListener()
                 handler.post(positionUpdater)
 
@@ -117,15 +111,12 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         try {
             val listenerComponent = ComponentName(carContext, AutoDeckMediaListener::class.java)
             val controllers = mediaSessionManager.getActiveSessions(listenerComponent)
-            Log.d("AutoDeckDebug", "Car active controllers found: ${controllers.size}")
-
             if (controllers.isNotEmpty()) {
                 attachMediaController(controllers[0])
             }
 
             mediaSessionManager.addOnActiveSessionsChangedListener(
                 { activeControllers ->
-                    Log.d("AutoDeckDebug", "Car active controllers changed: ${activeControllers?.size}")
                     if (!activeControllers.isNullOrEmpty()) {
                         attachMediaController(activeControllers[0])
                     }
@@ -162,7 +153,6 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) ?: ""
 
-        Log.d("AutoDeckDebug", "Car fetching lyrics for: $title by $artist")
         fetchLyricsFromApi(title, artist)
     }
 
@@ -211,7 +201,6 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         }
     }
 
-    // Forward touch events from the Haval head unit directly into the virtual presentation's WebView
     fun onTouchEvent(event: MotionEvent): Boolean {
         carWebView?.dispatchTouchEvent(event)
         return true
