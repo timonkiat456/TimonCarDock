@@ -61,6 +61,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
+
+
+    fun openGoogleLoginInPhoneBrowser() {
+    val loginIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.google.com/"))
+    startActivity(loginIntent)
+    }
+    
     companion object {
         private var instance: MainActivity? = null
 
