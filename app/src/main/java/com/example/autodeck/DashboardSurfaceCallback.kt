@@ -205,6 +205,13 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         }
     }
 
+    // update touch in car
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+    // Forward the touch coordinates directly to your WebView instance
+    webView?.dispatchTouchEvent(event)
+    return true
+}
+
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {
         handler.removeCallbacks(positionUpdater)
         Handler(Looper.getMainLooper()).post {
