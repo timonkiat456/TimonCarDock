@@ -9,7 +9,7 @@ import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
-import androidx.car.app.surface.SurfaceCallback
+import androidx.car.app.SurfaceCallback
 
 class AutoDeckSession : Session() {
     override fun onCreateScreen(intent: Intent): Screen {
