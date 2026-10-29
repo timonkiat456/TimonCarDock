@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
@@ -33,8 +34,8 @@ import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var mainWebView: WebView
-    private lateinit var webFrameWebView: WebView
+    lateinit var mainWebView: WebView
+    lateinit var webFrameWebView: WebView
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
     private lateinit var mediaSessionManager: MediaSessionManager
@@ -47,9 +48,6 @@ class MainActivity : AppCompatActivity() {
             activeController?.playbackState?.let { state ->
                 if (state.state == PlaybackState.STATE_PLAYING) {
                     val currentPositionSec = state.position / 1000.0
-                    
-                    Log.d("AutoDeckDebug", "Current Playback Position: $currentPositionSec seconds")
-
                     val script = "if (typeof updatePlaybackTime === 'function') { updatePlaybackTime($currentPositionSec); }"
                     if (::mainWebView.isInitialized && mainWebView.url?.contains("player.html") == true) {
                         mainWebView.evaluateJavascript(script, null)
@@ -63,8 +61,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    companion object {
+        private var instance: MainActivity? = null
+
+        fun dispatchTouchToWebView(event: MotionEvent) {
+            instance?.let { activity ->
+                activity.runOnUiThread {
+                    if (activity.mainWebView.visibility == View.VISIBLE) {
+                        activity.mainWebView.dispatchTouchEvent(event)
+                    } else if (activity.webFrameWebView.visibility == View.VISIBLE) {
+                        activity.webFrameWebView.dispatchTouchEvent(event)
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
         setContentView(R.layout.activity_main)
 
         mainWebView = findViewById(R.id.webView)
@@ -140,6 +155,10 @@ class MainActivity : AppCompatActivity() {
         @Suppress("DEPRECATION")
         settings.allowUniversalAccessFromFileURLs = true
         settings.userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        
+        wv.isClickable = true
+        wv.isFocusable = true
+        wv.isFocusableInTouchMode = true
     }
 
     fun showWebFrame(url: String) {
@@ -161,19 +180,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMediaSessionListener() {
         mediaSessionManager = getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
-
         try {
             val listenerComponent = ComponentName(this, AutoDeckMediaListener::class.java)
             val controllers = mediaSessionManager.getActiveSessions(listenerComponent)
-            Log.d("AutoDeckDebug", "Active controllers found: ${controllers.size}")
-
             if (controllers.isNotEmpty()) {
                 attachMediaController(controllers[0])
             }
-
             mediaSessionManager.addOnActiveSessionsChangedListener(
                 { activeControllers ->
-                    Log.d("AutoDeckDebug", "Active controllers changed: ${activeControllers?.size}")
                     if (!activeControllers.isNullOrEmpty()) {
                         attachMediaController(activeControllers[0])
                     }
@@ -187,33 +201,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun attachMediaController(controller: MediaController) {
         activeController = controller
-
         controller.registerCallback(object : MediaController.Callback() {
             override fun onMetadataChanged(metadata: MediaMetadata?) {
                 super.onMetadataChanged(metadata)
                 syncCurrentMediaToWebView()
             }
-
             override fun onPlaybackStateChanged(state: PlaybackState?) {
                 super.onPlaybackStateChanged(state)
                 syncCurrentMediaToWebView()
             }
         })
-
         syncCurrentMediaToWebView()
     }
 
     private fun syncCurrentMediaToWebView() {
         val metadata = activeController?.metadata ?: return
-
         val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Title"
         val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
-        
         lastArtworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) ?: ""
-
-        Log.d("AutoDeckDebug", "Fetching lyrics for: $title by $artist | Art: $lastArtworkUri")
         fetchLyricsFromApi(title, artist)
     }
 
@@ -269,17 +276,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestLocationPermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ),
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
                 LOCATION_PERMISSION_REQUEST_CODE
             )
         }
@@ -296,11 +296,7 @@ class MainActivity : AppCompatActivity() {
         handler.removeCallbacks(positionUpdater)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
