@@ -86,7 +86,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     // Force GPU hardware acceleration
                     setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
-                    // Safe Cookie Sync Bridge with proper try-catch boundaries
+                    // Safe Cookie Sync Bridge
                     try {
                         val systemCookieManager = android.webkit.CookieManager.getInstance()
                         systemCookieManager.setAcceptCookie(true)
@@ -147,21 +147,6 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
 
             } catch (e: Exception) {
                 e.printStackTrace()
-            }
-        }
-    }
-
-    override fun onSurfaceChanged(surfaceContainer: SurfaceContainer) {
-        val width = surfaceContainer.width
-        val height = surfaceContainer.height
-        if (width > 0 && height > 0) {
-            carWebView?.post {
-                carWebView?.measure(
-                    View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
-                )
-                carWebView?.layout(0, 0, width, height)
-                carWebView?.requestLayout()
             }
         }
     }
