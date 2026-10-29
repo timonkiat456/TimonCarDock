@@ -9,6 +9,7 @@ import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
+import androidx.car.app.surface.SurfaceCallback // <-- Added correct import for SurfaceCallback
 
 class AutoDeckSession : Session() {
 
@@ -24,7 +25,7 @@ class DashboardMainScreen(carContext: CarContext) : Screen(carContext) {
     init {
         // Safely attach the surface callback when the screen initializes
         carContext.getCarService(AppManager::class.java)
-            .setSurfaceCallback(surfaceCallback)
+            .setSurfaceCallback(surfaceCallback as SurfaceCallback)
     }
 
     override fun onGetTemplate(): Template {
