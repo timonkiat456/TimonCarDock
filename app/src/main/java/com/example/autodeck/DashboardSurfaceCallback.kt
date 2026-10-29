@@ -17,8 +17,8 @@ import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.car.app.CarContext
-import androidx.car.app.surface.SurfaceCallback
-import androidx.car.app.surface.SurfaceContainer
+import androidx.car.app.SurfaceCallback
+import androidx.car.app.SurfaceContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
