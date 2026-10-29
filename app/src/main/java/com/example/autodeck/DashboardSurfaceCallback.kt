@@ -12,11 +12,12 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.car.app.CarContext
-import androidx.car.app.SurfaceCallback
-import androidx.car.app.SurfaceContainer
+import androidx.car.app.surface.SurfaceCallback
+import androidx.car.app.surface.SurfaceContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -69,7 +70,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     height,
                     surfaceContainer.dpi,
                     surface,
-                    0
+                    VirtualDisplay.VIRTUAL_DISPLAY_FLAG_PUBLIC or VirtualDisplay.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR
                 )
 
                 val display = virtualDisplay?.display ?: return@post
@@ -77,8 +78,13 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                 // 2. Instantiate Presentation container
                 presentation = Presentation(carContext, display)
 
-                // 3. Instantiate WebView safely on the main thread
+                // 3. Instantiate WebView safely on the main thread with explicit touch focus flags
                 carWebView = WebView(carContext).apply {
+                    isClickable = true
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    requestFocus(View.FOCUS_DOWN)
+
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
@@ -205,12 +211,11 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
         }
     }
 
-    // update touch in car
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-    // Forward the touch coordinates directly to your WebView instance
-    webView?.dispatchTouchEvent(event)
-    return true
-}
+    // Forward touch events from the Haval head unit directly into the virtual presentation's WebView
+    fun onTouchEvent(event: MotionEvent): Boolean {
+        carWebView?.dispatchTouchEvent(event)
+        return true
+    }
 
     override fun onSurfaceDestroyed(surfaceContainer: SurfaceContainer) {
         handler.removeCallbacks(positionUpdater)
