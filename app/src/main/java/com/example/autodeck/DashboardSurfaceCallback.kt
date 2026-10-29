@@ -68,7 +68,7 @@ class DashboardSurfaceCallback(private val carContext: CarContext) : SurfaceCall
                     height,
                     surfaceContainer.dpi,
                     surface,
-                    VirtualDisplay.VIRTUAL_DISPLAY_FLAG_PUBLIC or VirtualDisplay.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR
                 )
 
                 val display = virtualDisplay?.display ?: return@post
